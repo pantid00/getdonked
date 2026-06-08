@@ -5,35 +5,29 @@ import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-
 import java.io.IOException;
 
 @WebFilter("/*")
 public class filter implements Filter {
-
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
-        String requestURI = request.getRequestURI();
+        String uri = request.getRequestURI();
 
-        if (requestURI.contains("main.html")) {
-            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-            response.setHeader("Pragma", "no-cache");
-            response.setDateHeader("Expires", 0);
-        }
-
-        if (requestURI.contains("login") || requestURI.contains("register") || requestURI.contains("logout") || requestURI.contains("checkUser")) {
+        // 核心：直接放行登录相关的基础文件，不要用 contains，用 endsWith
+        if (uri.endsWith("login.html") || uri.endsWith("LoginServlet") || uri.endsWith(".css") || uri.endsWith(".js")) {
             chain.doFilter(req, res);
             return;
         }
 
-        HttpSession session = request.getSession();
-        if (session.getAttribute("user") == null) {
-            response.sendRedirect("login.html");
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            // 跳转到根目录下的 login.html
+            response.sendRedirect(request.getContextPath() + "/login.html");
             return;
         }
+
         chain.doFilter(req, res);
     }
 }

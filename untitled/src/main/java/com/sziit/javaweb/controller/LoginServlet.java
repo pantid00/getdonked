@@ -39,6 +39,10 @@ public class LoginServlet extends HttpServlet {
         if (user != null && user.getPassword().equals(password)) {
             HttpSession session = req.getSession();
             session.setAttribute("user", user);
+
+            // 【添加这行日志】
+            System.out.println("Servlet: 用户已存入 Session，SessionID: " + session.getId());
+
             resp.sendRedirect("main.html");
             return;
         }
