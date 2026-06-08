@@ -12,8 +12,7 @@ import java.io.IOException;
 public class filter implements Filter {
 
     @Override
-    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
-            throws IOException, ServletException {
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
@@ -33,8 +32,8 @@ public class filter implements Filter {
         HttpSession session = request.getSession();
         if (session.getAttribute("user") == null) {
             response.sendRedirect("login.html");
-        } else {
-            chain.doFilter(req, res);
+            return;
         }
+        chain.doFilter(req, res);
     }
 }

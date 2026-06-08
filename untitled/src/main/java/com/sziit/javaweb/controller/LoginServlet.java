@@ -24,24 +24,24 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
-        User userByName = UserJdbc.getUserByName(username);
+        User user = UserJdbc.getUserByName(username);
 
-        if (null != userByName && userByName.getPassword().equals(password)) {
+        if (null != user && user.getPassword().equals(password)) {
             resp.setContentType("text/html");
             resp.setCharacterEncoding("utf-8");
             PrintWriter writer = resp.getWriter();
-            writer.println("<h1>欢迎登录，" + userByName.getName() + "!</h1>");
+            writer.println("<h1>欢迎登录，" + user.getName() + "!</h1>");
             writer.println("<h1><a href=\"login.html\">退出登录</a></h1>");
         } else {
             resp.sendRedirect("loginFail.html");
         }
 
-        if (userByName != null && userByName.getPassword().equals(password)) {
+        if (user != null && user.getPassword().equals(password)) {
             HttpSession session = req.getSession();
-            session.setAttribute("user", userByName);
+            session.setAttribute("user", user);
             resp.sendRedirect("main.html");
-        } else {
-            resp.sendRedirect("loginFail.html");
+            return;
         }
+        resp.sendRedirect("loginFail.html");
     }
 }
