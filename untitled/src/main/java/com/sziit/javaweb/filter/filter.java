@@ -15,19 +15,33 @@ public class filter implements Filter {
         HttpServletResponse response = (HttpServletResponse) res;
         String uri = request.getRequestURI();
 
-        // 核心：直接放行登录相关的基础文件，不要用 contains，用 endsWith
-        if (uri.endsWith("login.html") || uri.endsWith("LoginServlet") || uri.endsWith(".css") || uri.endsWith(".js")) {
+        // 1. 公开资源白名单
+        if (isPublicResource(uri)) {
             chain.doFilter(req, res);
             return;
         }
 
+        // 2. 权限校验
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            // 跳转到根目录下的 login.html
+            System.out.println("安全拦截: 非法尝试访问 " + uri);
+
+            // 【重点】设置响应头，强制浏览器不缓存这个重定向页面
+            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+            response.setDateHeader("Expires", 0);
+
             response.sendRedirect(request.getContextPath() + "/login.html");
             return;
         }
 
         chain.doFilter(req, res);
+    }
+
+    private boolean isPublicResource(String uri) {
+        return uri.endsWith("/login.html") ||
+                uri.endsWith("/login") ||
+                uri.endsWith(".js") ||
+                uri.endsWith(".css");
     }
 }

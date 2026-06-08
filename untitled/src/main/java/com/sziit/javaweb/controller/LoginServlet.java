@@ -19,33 +19,21 @@ public class LoginServlet extends HttpServlet {
         String username = req.getParameter("username");
         String password = req.getParameter("password");
 
-        if (username == null || password == null) {
-            resp.sendRedirect("loginFail.html");
-            return;
-        }
-
         User user = UserJdbc.getUserByName(username);
-
-        if (null != user && user.getPassword().equals(password)) {
-            resp.setContentType("text/html");
-            resp.setCharacterEncoding("utf-8");
-            PrintWriter writer = resp.getWriter();
-            writer.println("<h1>欢迎登录，" + user.getName() + "!</h1>");
-            writer.println("<h1><a href=\"login.html\">退出登录</a></h1>");
-        } else {
-            resp.sendRedirect("loginFail.html");
-        }
+        System.out.println("DEBUG: 从数据库查到的用户对象: " + user);
+        System.out.println("DEBUG: 数据库密码: " + user.getPassword() + ", 输入密码: " + password);
 
         if (user != null && user.getPassword().equals(password)) {
-            HttpSession session = req.getSession();
+            HttpSession session = req.getSession(true); // 确保创建 Session
             session.setAttribute("user", user);
 
-            // 【添加这行日志】
-            System.out.println("Servlet: 用户已存入 Session，SessionID: " + session.getId());
-
-            resp.sendRedirect("main.html");
+            // 跳转到主页
+            resp.sendRedirect(req.getContextPath() + "/main.html");
+            return;
+        } else {
+            // 登录失败
+            resp.sendRedirect(req.getContextPath() + "/loginFail.html");
             return;
         }
-        resp.sendRedirect("loginFail.html");
     }
 }
