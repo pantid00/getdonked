@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        #userMsg{
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <form action="register" method="post" onsubmit="return validForm()">
+        用户名：<input type="text" id="username" name="username" onblur="checkUsername()" required><span id="userMsg"></span><br>
+        密码：<input type="password" id="password" name="password" required><br>
+        姓名：<input type="text" id="name" name="name" required><br>
+        年龄：<input type="number" id="age" name="age" required><br>
+        <input type="submit" value="注册">
+    </form>
+</body>
+<script>
+    let usernameValid = false;
+    async function checkUsername() {
+        const username = document.getElementById("username").value;
+        const msg = document.getElementById('userMsg');
+
+        if (!username.trim()) {
+            msg.textContent = "";
+            return;
+        }
+
+        const response = await axios.get("checkUser", { params: { username: username } });
+
+        const result = response.data.trim();
+
+        if (result === "fail") {
+            msg.textContent = "用户名已注册";
+            usernameValid = false;
+        } else {
+            msg.textContent = "用户名可用";
+            usernameValid = true;
+        }
+    }
+
+    function validForm() {
+        if (!usernameValid) {
+            alert("请先修正用户名错误");
+            return false;
+        }
+        return true;
+    }
+</script>
+</html>
