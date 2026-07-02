@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理系统 (带头像管理)</title>
+    <script src="js/axios.min.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", sans-serif; background-color: #f5f7fa; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e6ebf5; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h2 { margin: 0; font-size: 22px; color: #409EFF; display: flex; align-items: center; gap: 8px; }
+        .btn { padding: 9px 15px; border-radius: 4px; border: none; font-size: 14px; cursor: pointer; transition: background 0.3s; }
+        .btn-primary { background-color: #409EFF; color: #fff; }
+        .btn-primary:hover { background-color: #66b1ff; }
+        .btn-default { background-color: #fff; color: #606266; border: 1px solid #dcdfe6; }
+        .btn-default:hover { background-color: #ecf5ff; color: #409EFF; border-color: #c6e2ff; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .input-control { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 14px; width: 250px; outline: none; }
+        .input-control:focus { border-color: #409EFF; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #efefef; font-size: 14px; vertical-align: middle; }
+        th { background-color: #f8f9fb; color: #909399; font-weight: 600; }
+        tr:hover { background-color: #f9fafc; }
+        .action-link { color: #409EFF; cursor: pointer; margin-right: 15px; text-decoration: none; font-size: 13px; }
+        .action-link.delete { color: #F56C6C; }
+
+        .table-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ebeef5; background-color: #f5f7fa; }
+
+        .modal-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-mask.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: #fff; width: 440px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); padding: 25px; position: relative; }
+        .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #303133; text-align: center; }
+        .form-item { margin-bottom: 16px; }
+        .form-item label { display: block; margin-bottom: 6px; font-size: 13px; color: #606266; }
+        .form-item .input-block { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #dcdfe6; border-radius: 4px; outline: none; }
+        .form-item .input-block:focus { border-color: #409EFF; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+
+        .avatar-upload-wrapper { text-align: center; margin-bottom: 20px; }
+        .avatar-uploader { position: relative; display: inline-block; width: 90px; height: 90px; border-radius: 50%; border: 2px dashed #dcdfe6; cursor: pointer; transition: border-color 0.3s; overflow: hidden; background: #fbfdff; }
+        .avatar-uploader:hover { border-color: #409EFF; }
+        .avatar-uploader img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-uploader .upload-icon { font-size: 28px; color: #8c939d; line-height: 90px; text-align: center; }
+        .avatar-upload-tip { font-size: 12px; color: #909399; margin-top: 5px; }
+        .disabled-upload { cursor: not-allowed; background-color: #f5f7fa; }
+        .disabled-upload:hover { border-color: #dcdfe6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>👥 用户管理系统</h2>
+        <button class="btn btn-primary" onclick="openAddModal()">+ 添加用户</button>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchUsername" class="input-control" placeholder="搜索用户名...">
+        <button class="btn btn-default" onclick="searchSingleUser()">查询</button>
+        <button class="btn btn-default" onclick="loadUserList()">🔄 刷新列表</button>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>头像</th>
+            <th>用户名</th>
+            <th>姓名</th>
+            <th>年龄</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="userTableBody">
+        </tbody>
+    </table>
+</div>
+
+<div class="modal-mask" id="userModal">
+    <div class="modal-box">
+        <div class="modal-header" id="modalTitle">编辑用户</div>
+
+        <div class="avatar-upload-wrapper">
+            <div class="avatar-uploader" id="avatarUploader" onclick="triggerModalFileUpload()">
+                <img id="modal_avatar_preview" src="" style="display: none;" alt="头像">
+                <div class="upload-icon" id="modal_avatar_icon">+</div>
+            </div>
+            <div class="avatar-upload-tip" id="avatarUploadTip">点击上方圆框上传新头像</div>
+            <input type="file" id="modal_file_input" style="display: none;" accept="image/*" onchange="handleModalFileChange()">
+        </div>
+
+        <div class="form-item">
+            <label>用户名</label>
+            <input type="text" id="form_username" class="input-block" placeholder="请输入用户名">
+        </div>
+        <div class="form-item">
+            <label>密码</label>
+            <input type="password" id="form_password" class="input-block" placeholder="请输入密码">
+        </div>
+        <div class="form-item">
+            <label>姓名</label>
+            <input type="text" id="form_name" class="input-block" placeholder="请输入姓名">
+        </div>
+        <div class="form-item">
+            <label>年龄</label>
+            <input type="number" id="form_age" class="input-block" placeholder="请输入年龄">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-default" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" onclick="submitForm()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = 'users';
+    const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23ccc'/><circle cx='50' cy='40' r='20' fill='%23666'/><path d='M20,80 Q50,50 80,80' fill='none' stroke='%23666' stroke-width='10'/></svg>"; // 默认占位头像
+    let isEditMode = false;
+    let currentModalAvatar = '';
+
+    window.onload = function() {
+        loadUserList();
+    };
+
+    function loadUserList() {
+        axios.get(API_BASE_URL)
+            .then(function(response) {
+                renderTable(response.data);
+            })
+            .catch(err => console.error("加载列表失败:", err));
+    }
+
+    function searchSingleUser() {
+        const query = document.getElementById('searchUsername').value.trim();
+        if(!query) {
+            loadUserList();
+            return;
+        }
+        axios.get(API_BASE_URL, { params: { username: query } })
+            .then(function(response) {
+                if (response.data) {
+                    renderTable([response.data]);
+                } else {
+                    document.getElementById('userTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#909399;">未找到该用户</td></tr>';
+                }
+            });
+    }
+
+    function renderTable(users) {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = '';
+        if(!users || users.length === 0 || users[0] === null) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#909399;">暂无用户数据</td></tr>';
+            return;
+        }
+        users.forEach(user => {
+            const userAvatar = user.avatar ? user.avatar : DEFAULT_AVATAR;
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <img class="table-avatar" src="${userAvatar}" onerror="this.onerror=null;this.src=DEFAULT_AVATAR">
+                    </td>
+                    <td style="font-weight:600; color:#409EFF;">${user.username}</td>
+                    <td>${user.name}</td>
+                    <td><span style="background:#f0f2f5; padding:3px 8px; border-radius:10px; font-size:12px;">${user.age} 岁</span></td>
+                    <td>
+                        <a class="action-link" onclick="openEditModal('${user.username}', '${user.password}', '${user.name}', ${user.age}, '${user.avatar || ''}')">📝 编辑 / 上传头像</a>
+                        <a class="action-link delete" onclick="deleteUser('${user.username}')">🗑️ 删除</a>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function openAddModal() {
+        isEditMode = false;
+        currentModalAvatar = '';
+        document.getElementById('modalTitle').innerText = "添加用户";
+        document.getElementById('form_username').disabled = false;
+        clearForm();
+
+        const uploader = document.getElementById('avatarUploader');
+        uploader.classList.add('disabled-upload');
+        document.getElementById('modal_avatar_preview').style.display = 'none';
+        document.getElementById('modal_avatar_icon').style.display = 'block';
+        document.getElementById('avatarUploadTip').innerText = "提示：保存用户后可编辑上传头像";
+
+        document.getElementById('userModal').classList.add('active');
+    }
+
+    function openEditModal(username, password, name, age, avatar) {
+        isEditMode = true;
+        currentModalAvatar = avatar || '';
+        document.getElementById('modalTitle').innerText = "编辑用户资料";
+        document.getElementById('form_username').value = username;
+        document.getElementById('form_username').disabled = true; // 主键禁止变动
+        document.getElementById('form_password').value = password;
+        document.getElementById('form_name').value = name;
+        document.getElementById('form_age').value = age;
+
+        const uploader = document.getElementById('avatarUploader');
+        uploader.classList.remove('disabled-upload');
+        document.getElementById('avatarUploadTip').innerText = "点击上方图片，更换用户头像";
+
+        const previewImg = document.getElementById('modal_avatar_preview');
+        const iconDiv = document.getElementById('modal_avatar_icon');
+
+        if (avatar && avatar.trim() !== "") {
+            previewImg.src = avatar;
+            previewImg.style.display = 'block';
+            iconDiv.style.display = 'none';
+        } else {
+            previewImg.style.display = 'none';
+            iconDiv.style.display = 'block';
+        }
+
+        document.getElementById('userModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('userModal').classList.remove('active');
+    }
+
+    function triggerModalFileUpload() {
+        if (!isEditMode) {
+            alert("请先填写左下角信息保存并创建该用户，再通过‘编辑’上传头像！");
+            return;
+        }
+        document.getElementById('modal_file_input').click();
+    }
+
+    function handleModalFileChange() {
+        const fileInput = document.getElementById('modal_file_input');
+        const username = document.getElementById('form_username').value.trim();
+
+        if (fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("图片大小不能超过 2MB");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("username", username);
+
+        axios.post('api/user/uploadAvatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+            .then(res => {
+                if (res.data.status === 'success') {
+                    alert("头像上传并保存成功！");
+
+                    currentModalAvatar = res.data.avatarUrl;
+
+                    const previewImg = document.getElementById('modal_avatar_preview');
+                    previewImg.src = res.data.avatarUrl + "?t=" + new Date().getTime();
+                    previewImg.style.display = 'block';
+                    document.getElementById('modal_avatar_icon').style.display = 'none';
+
+                    loadUserList();
+                } else {
+                    alert("头像上传失败：" + res.data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("上传接口出现异常，请确认 Spring MVC 服务是否正常。");
+            });
+    }
+
+    function submitForm() {
+        const payload = {
+            username: document.getElementById('form_username').value.trim(),
+            password: document.getElementById('form_password').value.trim(),
+            name: document.getElementById('form_name').value.trim(),
+            age: parseInt(document.getElementById('form_age').value),
+            avatar: currentModalAvatar
+        };
+
+        if(!payload.username || !payload.password || !payload.name || isNaN(payload.age)) {
+            alert("请完整填写表单项！");
+            return;
+        }
+
+        if (!isEditMode) {
+            axios.post(API_BASE_URL, payload)
+                .then(res => {
+                    if (res.data.status === 'success') {
+                        alert("用户创建成功！");
+                        closeModal();
+                        loadUserList();
+                    } else if (res.data.status === 'exists') {
+                        alert("该用户名在系统中已存在！");
+                    }
+                });
+        } else {
+            axios.put(API_BASE_URL, payload)
+                .then(res => {
+                    if (res.data.status === 'success') {
+                        alert("用户基础资料修改成功！");
+                        closeModal();
+                        loadUserList();
+                    }
+                });
+        }
+    }
+
+    function deleteUser(username) {
+        if(confirm(`警告：您确认要彻底删除用户 [ ${username} ] 吗？`)) {
+            axios.delete(API_BASE_URL, { params: { username: username } })
+                .then(res => {
+                    if (res.data.status === 'success') {
+                        alert("用户已成功注销");
+                        loadUserList();
+                    }
+                });
+        }
+    }
+
+    function clearForm() {
+        document.getElementById('form_username').value = '';
+        document.getElementById('form_password').value = '';
+        document.getElementById('form_name').value = '';
+        document.getElementById('form_age').value = '';
+        document.getElementById('modal_file_input').value = '';
+    }
+</script>
+</body>
+</html>
